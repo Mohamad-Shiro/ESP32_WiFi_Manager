@@ -1,5 +1,7 @@
 bool connection = false;
 
+void connection_handler();
+wl_status_t check_connection_timeout(int);
 void connect_at_indx(int);
 int search_networks(String, int);
 String take_input();
@@ -8,27 +10,29 @@ void list_networks(int);
 void init_conn();
 
 
+
+/**
+ * 
+ * 
+ * 
+*/
 void init_conn() {
     String curr_msg = "";
 
-    Serial.println("Scanning...");
-    int networks = WiFi.scanNetworks();
     
     bool quit = false;
     while (!quit) {
+        Serial.println("Scanning...");
+        int networks = WiFi.scanNetworks();
+
         if (networks == 0) {
             Serial.println("No networks in range! rescan? y/n");
-            // Wait for user input
-            curr_msg = take_input();
 
+            // Wait for user input
             while (1) {
                 curr_msg = take_input();
-                if (curr_msg != "y" && curr_msg != "n") {
-                    Serial.println("Please enter valid input: y/n");
-                    curr_msg = "";
-                } else {
-                    break;
-                }
+                if (curr_msg != "y" && curr_msg != "n") Serial.println("Please enter valid input: y/n");
+                else break;
             }
             // Check user decision
             // If user input "n" quit connection function. (break main loop)
@@ -44,7 +48,6 @@ void init_conn() {
             
             while (1) {
                 curr_msg = take_input();
-                curr_msg.remove(curr_msg.length()-1, curr_msg.length());
 
                 if (curr_msg == "abort") {
                     Serial.println("Aborted");
@@ -82,7 +85,11 @@ void init_conn() {
     Serial.println("");
 }
 
-
+/**
+ * 
+ * 
+ * 
+*/
 void list_networks(int n) {
     Serial.print(n);
     Serial.println(" networks found. listing..");
@@ -98,6 +105,11 @@ void list_networks(int n) {
     }
 }
 
+/**
+ * 
+ * 
+ * 
+*/
 int str_to_int(String number) {
     int x = 0;
     for (int i = 0; i < number.length(); i++) {
@@ -107,21 +119,37 @@ int str_to_int(String number) {
     return x;
 }
 
-
+/**
+ * 
+ * 
+ * 
+*/
 String take_input() {
     while (1) {
         if (Serial.available()) {
             String msg = Serial.readString();
+            // Filter input end
+            int i;
+            for (i = msg.length(); i >= 0; --i) {
+                if (msg[i] >= 33 && msg[i] <= 126) {
+                    break;
+                }
+            }
+            msg.remove(i+1, msg.length());
 
             if (!msg.isEmpty()) {
                 return msg;
-                break;
             } else Serial.println("Please enter non-empty input..");
         }
         delay(100);
     }
 }
 
+/**
+ * 
+ * 
+ * 
+*/
 int search_networks(String name, int n) {
     for (int i = 0; i < n; ++i) {
         if (name == WiFi.SSID(i)) {
@@ -131,14 +159,18 @@ int search_networks(String name, int n) {
     return -1;
 }
 
+/**
+ * 
+ * 
+ * 
+*/
 void connect_at_indx(int indx) {
     String name = WiFi.SSID(indx);
 
     if (WiFi.encryptionType(indx) == WIFI_AUTH_OPEN) {
-        Serial.print("Connecting to WiFi ");
-        Serial.print(name);
-        Serial.println("...");
-        WiFi.begin(name, "");
+        try_netowrk(name, "");
+        check_connection_timeout(5000);
+        connection_handler();
 
     } else {
         Serial.print("Enter password for ");
@@ -147,17 +179,98 @@ void connect_at_indx(int indx) {
 
         String password = take_input();
 
-        Serial.print("Connecting to WiFi ");
-        Serial.print(name);
-        Serial.println("...");
-        WiFi.begin(name, password);
+        try_netowrk(name, password);
+        check_connection_timeout(5000);
+        connection_handler();
     }
-    
+}
+
+/**
+ * 
+ * 
+ * 
+*/
+void try_netowrk(String name, String password) {
+    Serial.print("Connecting to WiFi ");
+    Serial.print(name);
+    Serial.println("...");
+    WiFi.begin(name, password);
+}
+
+/**
+ * 
+ * 
+ * 
+*/
+wl_status_t check_connection_timeout(int timeOut) {
     // Wait for connection
-    while (WiFi.status() != WL_CONNECTED) {
+    int initTime = millis();
+    int currTime = initTime;
+
+    while (WiFi.status() != WL_CONNECTED && (currTime - initTime < timeOut)) {
         delay(100);
         Serial.print(".");
+        currTime = millis();
     }
-    Serial.println(" Connected!");
-    connection = true;
+    return WiFi.status();
+}
+
+/**
+ * 
+ * 
+ * 
+*/
+void connection_handler() {
+    String curr_msg;
+    switch (WiFi.status()) {
+        case WL_CONNECTED:
+            Serial.println("Connected.");
+            connection = true;
+        break;
+
+        case WL_NO_SSID_AVAIL:
+            Serial.println("Network disappeared, initiate new scane? y/n");
+            // Wait for user input
+            while (1) {
+                curr_msg = take_input();
+                if (curr_msg != "y" && curr_msg != "n") Serial.println("Please enter valid input: y/n");
+                else break;
+            }
+            if (curr_msg == "y") init_conn();
+            else Serial.println("Aborted.");
+            return;
+        break;
+
+        case WL_CONNECT_FAILED:
+            Serial.println("Connection failed, (scan / abort)");
+            while (1) {
+                curr_msg = take_input();
+                if (curr_msg != "scan" && curr_msg != "abort") Serial.println("Please enter valid input: (scan / abort)");
+                else break;
+            }
+            if (curr_msg == "scan") init_conn();
+            else Serial.println("Aborted.");
+        break;
+        
+        case WL_CONNECTION_LOST:
+            Serial.println("Connection lost, (scan / abort):");
+            while (1) {
+                curr_msg = take_input();
+                if (curr_msg != "scan" && curr_msg != "abort") Serial.println("Please enter valid input: (scan / abort)");
+                else break;
+            }
+            if (curr_msg == "scan") init_conn();
+            else Serial.println("Aborted.");
+            return;
+        break;
+
+        case WL_DISCONNECTED:
+            Serial.println("Disconnected..");
+            connection = false;
+            return;
+        break;
+
+        default:
+            break;
+    }
 }
