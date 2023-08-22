@@ -15,45 +15,41 @@ void setup() {
     // List availiable networks
     // take user input
     // make decision
-    init_conn();
+    initializeConnection();
 }
 
 void loop() {
     if (!connection) {
         // Check user input
-        // if user input to connect call init_conn()
+        // if user input to connect call initializeConnection()
         Serial.println("U have not connected to a network yet!. (connect / skip)");
-        String msg0 = take_input();
-        if (msg0 == "connect") {
-          init_conn();
-        }
+        if (takeInput() == "connect") initializeConnection();
+
     } else {
         // Should be connected -> if disconnected prompt user and wait for decision
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("WiFi disconnected. reconnect? y/n:");
-            String msg0 = take_input();
-            if (msg0 == "y") {
-                init_conn();
-            } else {
-                connection = false;
-            }
+
+            if (takeInput() == "y") initializeConnection();
+            else connection = false;
         }
     }
 
     
     Serial.println("Loop entered: (disconnect / reconnect / rescan)");
-    String msg = take_input();
-    Serial.println(msg);
-    if (msg == "disconnect") {
+    String userInput = takeInput();
+    
+    if (userInput == "disconnect") {
         WiFi.disconnect();
+        Serial.println("Disconnecting...");
         delay(100);
-        connection_handler();
-    } else if (msg == "reconnect") {
+        connectionHandler(100);
+    } else if (userInput == "reconnect") {
         WiFi.reconnect();
-        check_connection_timeout(5000);
-        connection_handler();
+        Serial.println("reconnecting...");
+        connectionHandler(2000);
     } else {
-        init_conn();
+        initializeConnection();
     }
 
     // Rest of code

@@ -1,100 +1,64 @@
 bool connection = false;
 
-void connection_handler();
-wl_status_t check_connection_timeout(int);
-void connect_at_indx(int);
-int search_networks(String, int);
-String take_input();
-int str_to_int(String number);
-void list_networks(int);
-void init_conn();
+wl_status_t checkConnectionTimeout(int timeOut);
+void connectionHandler(int);
+void connectToNetwork(int index);
+int searchNetworks(const String& name, int numNetworks);
+void listNetworks(int numNetworks);
+int stringToInt(const String& str);
+String takeInput();
+void initializeConnection();
 
+void initializeConnection() {
+    String userInput;
 
-
-/**
- * 
- * 
- * 
-*/
-void init_conn() {
-    String curr_msg = "";
-
-    
-    bool quit = false;
-    while (!quit) {
+    while (true) {
         Serial.println("Scanning...");
-        int networks = WiFi.scanNetworks();
+        int numNetworks = WiFi.scanNetworks();
 
-        if (networks == 0) {
-            Serial.println("No networks in range! rescan? y/n");
-
-            // Wait for user input
-            while (1) {
-                curr_msg = take_input();
-                if (curr_msg != "y" && curr_msg != "n") Serial.println("Please enter valid input: y/n");
-                else break;
+        if (numNetworks == 0) {
+            Serial.println("No networks in range! Do you want to rescan? (y/n)");
+            userInput = takeInput();
+            if (userInput == "n") {
+                break;
             }
-            // Check user decision
-            // If user input "n" quit connection function. (break main loop)
-            // If "y" rescan
-            if (curr_msg == "n") quit = true;
-
         } else {
-            list_networks(networks);
-            // Enter the number of target network
-            // or network name prefixed by ":". (enter "abort" to quit)
-            Serial.println("Enter the number of target network");
-            Serial.println("or network name prefixed by \":\". (enter \"abort\" to quit)");
-            
-            while (1) {
-                curr_msg = take_input();
+            listNetworks(numNetworks);
+            Serial.println("Enter the number or name (prefixed with \":\") of the target network (enter \"abort\" to quit):");
+            userInput = takeInput();
 
-                if (curr_msg == "abort") {
-                    Serial.println("Aborted");
-                    quit = true;
+            if (userInput == "abort") {
+                Serial.println("Aborted");
+                break;
+            }
+
+            if (userInput[0] == ':') {
+                String networkName = userInput.substring(1);
+                int index = searchNetworks(networkName, numNetworks);
+                if (index != -1) {
+                    connectToNetwork(index);
                     break;
-                }
-
-                if (curr_msg[0] == ':') {
-                    // Search by name
-                    curr_msg.remove(0, 1);
-                    int indx = search_networks(curr_msg, networks); 
-                    if (indx != -1) {
-                        connect_at_indx(indx);
-                        quit = true;
-                        break;
-                    } else {
-                        Serial.println("Invalid network name, please try again.");
-                    }
-                    
                 } else {
-                    // Search by number
-                    int indx = str_to_int(curr_msg);
-                    if (indx <= networks) {
-                        connect_at_indx(indx-1);
-                        quit = true;
-                        break;
-                    } else {
-                        Serial.println("Invalid network number, please try again.");
-                    }
+                    Serial.println("Invalid network name, please try again.");
+                }
+            } else {
+                int index = userInput.toInt();
+                if (index >= 1 && index <= numNetworks) {
+                    connectToNetwork(index - 1);
+                    break;
+                } else {
+                    Serial.println("Invalid network number, please try again.");
                 }
             }
         }
     }
-    
-    Serial.println("");
 }
 
-/**
- * 
- * 
- * 
-*/
-void list_networks(int n) {
-    Serial.print(n);
-    Serial.println(" networks found. listing..");
-    for (int i = 0; i < n; ++i) {
-        // Print SSID and RSSI for each network found
+void listNetworks(int numNetworks) {
+    Serial.print(numNetworks);
+    Serial.println(" networks found. Listing...");
+    
+    for (int i = 0; i < numNetworks; ++i) {
         Serial.print(i + 1);
         Serial.print(": ");
         Serial.print(WiFi.SSID(i));
@@ -105,53 +69,25 @@ void list_networks(int n) {
     }
 }
 
-/**
- * 
- * 
- * 
-*/
-int str_to_int(String number) {
-    int x = 0;
-    for (int i = 0; i < number.length(); i++) {
-        int tmp = number[i] - '0';
-        x = x*10 + tmp;
-    }
-    return x;
-}
 
-/**
- * 
- * 
- * 
-*/
-String take_input() {
-    while (1) {
+String takeInput() {
+    while (true) {
         if (Serial.available()) {
             String msg = Serial.readString();
-            // Filter input end
-            int i;
-            for (i = msg.length(); i >= 0; --i) {
-                if (msg[i] >= 33 && msg[i] <= 126) {
-                    break;
-                }
-            }
-            msg.remove(i+1, msg.length());
+            msg.trim();
 
             if (!msg.isEmpty()) {
                 return msg;
-            } else Serial.println("Please enter non-empty input..");
+            } else {
+                Serial.println("Please enter non-empty input.");
+            }
         }
         delay(100);
     }
 }
 
-/**
- * 
- * 
- * 
-*/
-int search_networks(String name, int n) {
-    for (int i = 0; i < n; ++i) {
+int searchNetworks(const String& name, int numNetworks) {
+    for (int i = 0; i < numNetworks; ++i) {
         if (name == WiFi.SSID(i)) {
             return i;
         }
@@ -159,118 +95,85 @@ int search_networks(String name, int n) {
     return -1;
 }
 
-/**
- * 
- * 
- * 
-*/
-void connect_at_indx(int indx) {
-    String name = WiFi.SSID(indx);
+void connectToNetwork(int index) {
+    String networkName = WiFi.SSID(index);
 
-    if (WiFi.encryptionType(indx) == WIFI_AUTH_OPEN) {
-        try_netowrk(name, "");
-        check_connection_timeout(5000);
-        connection_handler();
+    if (WiFi.encryptionType(index) == WIFI_AUTH_OPEN) {
+        Serial.print("Connecting to ");
+        Serial.print(networkName);
+        Serial.println("...");
+
+        WiFi.begin(networkName);
+        connectionHandler(5000);
 
     } else {
         Serial.print("Enter password for ");
-        Serial.print(name);
+        Serial.print(networkName);
         Serial.println(":");
 
-        String password = take_input();
-
-        try_netowrk(name, password);
-        check_connection_timeout(5000);
-        connection_handler();
+        String password = takeInput();
+        
+        Serial.print("Connecting to ");
+        Serial.print(networkName);
+        Serial.println("...");
+        
+        WiFi.begin(networkName, password);
+        connectionHandler(5000);
     }
 }
 
-/**
- * 
- * 
- * 
-*/
-void try_netowrk(String name, String password) {
-    Serial.print("Connecting to WiFi ");
-    Serial.print(name);
-    Serial.println("...");
-    WiFi.begin(name, password);
-}
+void connectionHandler(int timeOut = 10000) {
+    wl_status_t connectionStatus = checkConnectionTimeout(timeOut);  // Adjust timeout as needed
 
-/**
- * 
- * 
- * 
-*/
-wl_status_t check_connection_timeout(int timeOut) {
-    // Wait for connection
-    int initTime = millis();
-    int currTime = initTime;
-
-    while (WiFi.status() != WL_CONNECTED && (currTime - initTime < timeOut)) {
-        delay(100);
-        Serial.print(".");
-        currTime = millis();
-    }
-    return WiFi.status();
-}
-
-/**
- * 
- * 
- * 
-*/
-void connection_handler() {
-    String curr_msg;
-    switch (WiFi.status()) {
+    switch (connectionStatus) {
         case WL_CONNECTED:
-            Serial.println("Connected.");
+            Serial.println("Connected to Wi-Fi.");
             connection = true;
-        break;
+            break;
 
         case WL_NO_SSID_AVAIL:
-            Serial.println("Network disappeared, initiate new scane? y/n");
-            // Wait for user input
-            while (1) {
-                curr_msg = take_input();
-                if (curr_msg != "y" && curr_msg != "n") Serial.println("Please enter valid input: y/n");
-                else break;
+            Serial.println("No such network available. Would you like to rescan? (y/n)");
+            if (takeInput() == "y") {
+                initializeConnection();
+            } else {
+                Serial.println("Aborted.");
             }
-            if (curr_msg == "y") init_conn();
-            else Serial.println("Aborted.");
-            return;
-        break;
+            break;
 
         case WL_CONNECT_FAILED:
-            Serial.println("Connection failed, (scan / abort)");
-            while (1) {
-                curr_msg = take_input();
-                if (curr_msg != "scan" && curr_msg != "abort") Serial.println("Please enter valid input: (scan / abort)");
-                else break;
-            }
-            if (curr_msg == "scan") init_conn();
+            Serial.println("Incorrect credentials. Would you like to retry? (y/n)");
+
+            if (takeInput() == "y") initializeConnection();
             else Serial.println("Aborted.");
-        break;
-        
+            break;
         case WL_CONNECTION_LOST:
-            Serial.println("Connection lost, (scan / abort):");
-            while (1) {
-                curr_msg = take_input();
-                if (curr_msg != "scan" && curr_msg != "abort") Serial.println("Please enter valid input: (scan / abort)");
-                else break;
-            }
-            if (curr_msg == "scan") init_conn();
+            Serial.println("Connection lost. Would you like to retry? (y/n)");
+
+            if (takeInput() == "y") initializeConnection();
             else Serial.println("Aborted.");
-            return;
-        break;
+            break;
 
         case WL_DISCONNECTED:
-            Serial.println("Disconnected..");
+            Serial.println("Disconnected from Wi-Fi.");
             connection = false;
-            return;
-        break;
+            break;
 
         default:
             break;
     }
+}
+
+wl_status_t checkConnectionTimeout(int timeOut) {
+    int initTime = millis();
+    int currTime = initTime;
+    wl_status_t connectionStatus = WiFi.status();
+
+    while (connectionStatus != WL_CONNECTED && (currTime - initTime < timeOut)) {
+        delay(100);
+        Serial.print(".");
+        currTime = millis();
+        connectionStatus = WiFi.status();
+    }
+
+    return connectionStatus;
 }
