@@ -1,31 +1,22 @@
-bool connection = false;
+#include <WiFi_Manager.h>
 
-wl_status_t checkConnectionTimeout(int timeOut);
-void connectionHandler(int);
-void connectToNetwork(int index);
-int searchNetworks(const String& name, int numNetworks);
-void listNetworks(int numNetworks);
-int stringToInt(const String& str);
-String takeInput();
-void initializeConnection();
+WiFiManager::WiFiManager() : connection(false) {}
 
-void initializeConnection() {
-    String userInput;
-
+void WiFiManager::start() {
     while (true) {
         Serial.println("Scanning...");
         int numNetworks = WiFi.scanNetworks();
 
         if (numNetworks == 0) {
             Serial.println("No networks in range! Do you want to rescan? (y/n)");
-            userInput = takeInput();
+            String userInput = takeInput();
             if (userInput == "n") {
                 break;
             }
         } else {
             listNetworks(numNetworks);
             Serial.println("Enter the number or name (prefixed with \":\") of the target network (enter \"abort\" to quit):");
-            userInput = takeInput();
+            String userInput = takeInput();
 
             if (userInput == "abort") {
                 Serial.println("Aborted");
@@ -54,10 +45,10 @@ void initializeConnection() {
     }
 }
 
-void listNetworks(int numNetworks) {
+void WiFiManager::listNetworks(int numNetworks) {
     Serial.print(numNetworks);
     Serial.println(" networks found. Listing...");
-    
+
     for (int i = 0; i < numNetworks; ++i) {
         Serial.print(i + 1);
         Serial.print(": ");
@@ -69,8 +60,7 @@ void listNetworks(int numNetworks) {
     }
 }
 
-
-String takeInput() {
+String WiFiManager::takeInput() {
     while (true) {
         if (Serial.available()) {
             String msg = Serial.readString();
@@ -86,7 +76,7 @@ String takeInput() {
     }
 }
 
-int searchNetworks(const String& name, int numNetworks) {
+int WiFiManager::searchNetworks(const String& name, int numNetworks) {
     for (int i = 0; i < numNetworks; ++i) {
         if (name == WiFi.SSID(i)) {
             return i;
@@ -95,7 +85,7 @@ int searchNetworks(const String& name, int numNetworks) {
     return -1;
 }
 
-void connectToNetwork(int index) {
+void WiFiManager::connectToNetwork(int index) {
     String networkName = WiFi.SSID(index);
 
     if (WiFi.encryptionType(index) == WIFI_AUTH_OPEN) {
@@ -112,29 +102,30 @@ void connectToNetwork(int index) {
         Serial.println(":");
 
         String password = takeInput();
-        
+
         Serial.print("Connecting to ");
         Serial.print(networkName);
         Serial.println("...");
-        
+
         WiFi.begin(networkName, password);
         connectionHandler(5000);
     }
 }
 
-void connectionHandler(int timeOut = 10000) {
-    wl_status_t connectionStatus = checkConnectionTimeout(timeOut);  // Adjust timeout as needed
+void WiFiManager::connectionHandler(int timeOut) {
+    wl_status_t connectionStatus = checkConnectionTimeout(timeOut);
 
     switch (connectionStatus) {
         case WL_CONNECTED:
-            Serial.println("Connected to Wi-Fi.");
+            Serial.print("Connected to Wi-Fi with local IP: ");
+            Serial.println(WiFi.localIP());
             connection = true;
             break;
 
         case WL_NO_SSID_AVAIL:
             Serial.println("No such network available. Would you like to rescan? (y/n)");
             if (takeInput() == "y") {
-                initializeConnection();
+                start();
             } else {
                 Serial.println("Aborted.");
             }
@@ -143,14 +134,18 @@ void connectionHandler(int timeOut = 10000) {
         case WL_CONNECT_FAILED:
             Serial.println("Incorrect credentials. Would you like to retry? (y/n)");
 
-            if (takeInput() == "y") initializeConnection();
-            else Serial.println("Aborted.");
+            if (takeInput() == "y")
+                start();
+            else
+                Serial.println("Aborted.");
             break;
         case WL_CONNECTION_LOST:
             Serial.println("Connection lost. Would you like to retry? (y/n)");
 
-            if (takeInput() == "y") initializeConnection();
-            else Serial.println("Aborted.");
+            if (takeInput() == "y")
+                start();
+            else
+                Serial.println("Aborted.");
             break;
 
         case WL_DISCONNECTED:
@@ -163,7 +158,7 @@ void connectionHandler(int timeOut = 10000) {
     }
 }
 
-wl_status_t checkConnectionTimeout(int timeOut) {
+wl_status_t WiFiManager::checkConnectionTimeout(int timeOut) {
     int initTime = millis();
     int currTime = initTime;
     wl_status_t connectionStatus = WiFi.status();
