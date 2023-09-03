@@ -26,6 +26,15 @@ Initializes the Wi-Fi connection process by scanning for available networks and 
 
 `WiFiManager wifiManager; wifiManager.start();`
 
+#### [`void connectToNetwork(name, password)`](https://github.com/Mohamad-Shiro/ESP32_WiFi_Manager/blob/e953db1a77c571cc4bf57ab725dfe1f165614291/lib/WiFi_Manager/WiFi_Manager.cpp#L48-L56)
+
+Connects directly to known network.
+- `char * ssid` name of network.
+- `char * password` password of network.
+**Example:**
+
+`WiFiManager wifiManager; wifiManager.connectToNetwork("Network name", "Network password");`
+
 #### [`String takeInput()`](https://github.com/Mohamad-Shiro/ESP32_WiFi_Manager/blob/c9d99e5dd48707facd76805f9bbbee4e80cfe53e/lib/WiFi_Manager/WiFi_Manager.cpp#L63-L77)
 
 Captures user input from the Serial interface and trims leading/trailing spaces.
