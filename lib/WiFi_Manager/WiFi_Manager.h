@@ -21,6 +21,15 @@ class WiFiManager {
 
     /**
      * @public
+     * Connect to a known network Directly
+     *
+     * @param ssid Name of network
+     * @param password Password of network
+     */
+    void connectToNetwork(char * ssid, char * password);
+
+    /**
+     * @public
      * Captures user input from the Serial interface and trims leading/trailing spaces.
      *
      * @return Cleaned input string from the user.

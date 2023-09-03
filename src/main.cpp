@@ -8,10 +8,10 @@ WiFiManager Scanner;
 
 void setup() {
     Serial.begin(SERIAL_BAUD);
-    WiFi.mode(WIFI_STA);
+    WiFiClass::mode(WIFI_STA);
     Serial.println("WiFi established.");
 
-    // List availiable networks
+    // List available networks
     // take user input
     // make decision
     Scanner.start();
@@ -26,7 +26,7 @@ void loop() {
 
     } else {
         // Should be connected -> if disconnected prompt user and wait for decision
-        if (WiFi.status() != WL_CONNECTED) {
+        if (WiFiClass::status() != WL_CONNECTED) {
             Serial.println("WiFi disconnected. reconnect? y/n:");
 
             if (Scanner.takeInput() == "y")

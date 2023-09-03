@@ -45,6 +45,17 @@ void WiFiManager::start() {
     }
 }
 
+void WiFiManager::connectToNetwork(char * ssid, char * password) {
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+    Serial.println("..........");
+
+    WiFi.begin(ssid, password);
+
+    connectionHandler(5000);
+}
+
+
 void WiFiManager::listNetworks(int numNetworks) {
     Serial.print(numNetworks);
     Serial.println(" networks found. Listing...");
